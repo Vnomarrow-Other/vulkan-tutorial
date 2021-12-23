@@ -126,7 +126,7 @@ impl App {
         create_texture_image(&instance, &device, &mut data)?;
         create_texture_image_view(&device, &mut data)?;
         create_texture_sampler(&device, &mut data)?;
-        load_model(&mut data)?;
+        load_model(&instance, &device, &mut data)?;
         create_vertex_buffer(&instance, &device, &mut data)?;
         create_index_buffer(&instance, &device, &mut data)?;
         create_uniform_buffers(&instance, &device, &mut data)?;
@@ -325,8 +325,8 @@ impl App {
         self.device.begin_command_buffer(command_buffer, &info)?;
 
         self.device.cmd_bind_pipeline(command_buffer, vk::PipelineBindPoint::GRAPHICS, self.data.pipeline);
-        self.device.cmd_bind_vertex_buffers(command_buffer, 0, &[self.data.vertex_buffer], &[0]);
-        self.device.cmd_bind_index_buffer(command_buffer, self.data.index_buffer, 0, vk::IndexType::UINT32);
+        self.device.cmd_bind_vertex_buffers(command_buffer, 0, &[self.data.models[model_index].vertex_buffer], &[0]);
+        self.device.cmd_bind_index_buffer(command_buffer, self.data.models[model_index].index_buffer, 0, vk::IndexType::UINT32);
         self.device.cmd_bind_descriptor_sets(
             command_buffer,
             vk::PipelineBindPoint::GRAPHICS,
@@ -428,6 +428,9 @@ impl App {
         self.device.destroy_buffer(self.data.index_buffer, None);
         self.device.free_memory(self.data.vertex_buffer_memory, None);
         self.device.destroy_buffer(self.data.vertex_buffer, None);
+        for i in 0..self.data.models.len() {
+            self.data.models[i].destroy(&self.device);
+        }
         self.device.destroy_sampler(self.data.texture_sampler, None);
         self.device.destroy_image_view(self.data.texture_image_view, None);
         self.device.free_memory(self.data.texture_image_memory, None);
@@ -462,6 +465,182 @@ impl App {
         self.device.destroy_render_pass(self.data.render_pass, None);
         self.data.swapchain_image_views.iter().for_each(|v| self.device.destroy_image_view(*v, None));
         self.device.destroy_swapchain_khr(self.data.swapchain, None);
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+struct MyModel {
+    // Model
+    vertices: Vec<Vertex>,
+    indices: Vec<u32>,
+    // Buffers
+    vertex_buffer: vk::Buffer,
+    vertex_buffer_memory: vk::DeviceMemory,
+    index_buffer: vk::Buffer,
+    index_buffer_memory: vk::DeviceMemory,
+}
+
+impl MyModel {
+    pub fn new() -> Self {
+        Self {
+            vertices: Default::default(),
+            indices: Default::default(),
+            vertex_buffer: Default::default(),
+            vertex_buffer_memory: Default::default(),
+            index_buffer: Default::default(),
+            index_buffer_memory: Default::default(),
+        }
+    }
+    pub unsafe fn destroy(&mut self, device: &Device) {
+        device.free_memory(self.index_buffer_memory, None);
+        device.destroy_buffer(self.index_buffer, None);
+        device.free_memory(self.vertex_buffer_memory, None);
+        device.destroy_buffer(self.vertex_buffer, None);
+    }
+    pub unsafe fn create_buffers(&mut self, data: &AppData, instance: &Instance, device: &Device) -> Result<()> {
+        self.create_index_buffer(data, instance, device)?;
+        self.create_vertex_buffer(data, instance, device)?;
+        return Ok(());
+    }
+    unsafe fn create_index_buffer(&mut self, data: &AppData, instance: &Instance, device: &Device) -> Result<()> {
+        // Create (staging)
+    
+        let size = (size_of::<u32>() * self.indices.len()) as u64;
+    
+        let (staging_buffer, staging_buffer_memory) = create_buffer(
+            instance,
+            device,
+            data,
+            size,
+            vk::BufferUsageFlags::TRANSFER_SRC,
+            vk::MemoryPropertyFlags::HOST_COHERENT | vk::MemoryPropertyFlags::HOST_VISIBLE,
+        )?;
+    
+        // Copy (staging)
+    
+        let memory = device.map_memory(staging_buffer_memory, 0, size, vk::MemoryMapFlags::empty())?;
+    
+        memcpy(self.indices.as_ptr(), memory.cast(), self.indices.len());
+    
+        device.unmap_memory(staging_buffer_memory);
+    
+        // Create (index)
+    
+        let (index_buffer, index_buffer_memory) = create_buffer(
+            instance,
+            device,
+            data,
+            size,
+            vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::INDEX_BUFFER,
+            vk::MemoryPropertyFlags::DEVICE_LOCAL,
+        )?;
+    
+        self.index_buffer = index_buffer;
+        self.index_buffer_memory = index_buffer_memory;
+    
+        // Copy (index)
+    
+        copy_buffer(device, data, staging_buffer, index_buffer, size)?;
+    
+        // Cleanup
+    
+        device.destroy_buffer(staging_buffer, None);
+        device.free_memory(staging_buffer_memory, None);
+    
+        Ok(())
+    }
+    unsafe fn create_vertex_buffer(&mut self, data: &AppData, instance: &Instance, device: &Device) -> Result<()> {
+        // Create (staging)
+    
+        let size = (size_of::<Vertex>() * self.vertices.len()) as u64;
+    
+        let (staging_buffer, staging_buffer_memory) = create_buffer(
+            instance,
+            device,
+            data,
+            size,
+            vk::BufferUsageFlags::TRANSFER_SRC,
+            vk::MemoryPropertyFlags::HOST_COHERENT | vk::MemoryPropertyFlags::HOST_VISIBLE,
+        )?;
+    
+        // Copy (staging)
+    
+        let memory = device.map_memory(staging_buffer_memory, 0, size, vk::MemoryMapFlags::empty())?;
+    
+        memcpy(self.vertices.as_ptr(), memory.cast(), self.vertices.len());
+    
+        device.unmap_memory(staging_buffer_memory);
+    
+        // Create (vertex)
+    
+        let (vertex_buffer, vertex_buffer_memory) = create_buffer(
+            instance,
+            device,
+            data,
+            size,
+            vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::VERTEX_BUFFER,
+            vk::MemoryPropertyFlags::DEVICE_LOCAL,
+        )?;
+    
+        self.vertex_buffer = vertex_buffer;
+        self.vertex_buffer_memory = vertex_buffer_memory;
+    
+        // Copy (vertex)
+    
+        copy_buffer(device, data, staging_buffer, vertex_buffer, size)?;
+    
+        // Cleanup
+    
+        device.destroy_buffer(staging_buffer, None);
+        device.free_memory(staging_buffer_memory, None);
+    
+        Ok(())
+    }
+    pub fn load_model(&mut self, path: &str) -> Result<()> {
+        // Model
+    
+        let mut reader = BufReader::new(File::open(path)?);
+    
+        let (models, _) = tobj::load_obj_buf(&mut reader, true, |_| {
+            let mut map = HashMap::new();
+            map.insert("Texture1".to_string(), 0);
+            Ok((vec![tobj::Material::empty()], map))
+        })?;
+    
+        // Vertices / Indices
+    
+        let mut unique_vertices = HashMap::new();
+    
+        for model in &models {
+            for index in &model.mesh.indices {
+                let pos_offset = (3 * index) as usize;
+                let tex_coord_offset = (2 * index) as usize;
+    
+                let vertex = Vertex {
+                    pos: glm::vec3(
+                        model.mesh.positions[pos_offset],
+                        model.mesh.positions[pos_offset + 1],
+                        model.mesh.positions[pos_offset + 2],
+                    ),
+                    color: glm::vec3(1.0, 1.0, 1.0),
+                    tex_coord: glm::vec2(
+                        model.mesh.texcoords[tex_coord_offset],
+                        1.0 - model.mesh.texcoords[tex_coord_offset + 1],
+                    ),
+                };
+    
+                if let Some(index) = unique_vertices.get(&vertex) {
+                    self.indices.push(*index as u32);
+                } else {
+                    let index = self.vertices.len();
+                    unique_vertices.insert(vertex, index);
+                    self.vertices.push(vertex);
+                    self.indices.push(index as u32);
+                }
+            }
+        }
+    
+        Ok(())
     }
 }
 
@@ -509,6 +688,7 @@ struct AppData {
     // Model
     vertices: Vec<Vertex>,
     indices: Vec<u32>,
+    models: Vec<MyModel>,
     // Buffers
     vertex_buffer: vk::Buffer,
     vertex_buffer_memory: vk::DeviceMemory,
@@ -1570,8 +1750,21 @@ unsafe fn create_texture_sampler(device: &Device, data: &mut AppData) -> Result<
 // Model
 //================================================
 
-fn load_model(data: &mut AppData) -> Result<()> {
+fn load_model(instance: &Instance, device: &Device, data: &mut AppData) -> Result<()> {
     // Model
+
+    for i in 0..4 {
+        let mut model = MyModel::new();
+        if i != 0 {
+            model.load_model("./resources/gifts.obj")?;
+        }
+        else {
+            model.load_model("./resources/viking_room.obj")?;
+        }
+        unsafe { model.create_buffers(data, instance, device)?; };
+        data.models.push(model);
+    }
+
 
     let mut reader = BufReader::new(File::open("./resources/viking_room.obj")?);
 
