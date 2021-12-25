@@ -82,6 +82,12 @@ fn main() -> Result<()> {
                     match input.virtual_keycode {
                         Some(VirtualKeyCode::Left) if app.models > 1 => app.models -= 1,
                         Some(VirtualKeyCode::Right) if app.models < 4 => app.models += 1,
+                        Some(VirtualKeyCode::W) => app.data.camera.position[0] += 1.0,
+                        Some(VirtualKeyCode::S) => app.data.camera.position[0] -= 1.0,
+                        Some(VirtualKeyCode::A) => app.data.camera.position[1] += 1.0,
+                        Some(VirtualKeyCode::D) => app.data.camera.position[1] -= 1.0,
+                        Some(VirtualKeyCode::Space) => app.data.camera.position[2] += 1.0,
+                        Some(VirtualKeyCode::LShift) => app.data.camera.position[2] -= 1.0,
                         _ => { }
                     }
                 }
@@ -127,8 +133,6 @@ impl App {
         create_texture_image_view(&device, &mut data)?;
         create_texture_sampler(&device, &mut data)?;
         load_model(&instance, &device, &mut data)?;
-        create_vertex_buffer(&instance, &device, &mut data)?;
-        create_index_buffer(&instance, &device, &mut data)?;
         create_uniform_buffers(&instance, &device, &mut data)?;
         create_descriptor_pool(&device, &mut data)?;
         create_descriptor_sets(&device, &mut data)?;
@@ -290,12 +294,18 @@ impl App {
 
         // Push Constants
 
-        let y = (((model_index % 2) as f32) * 2.5) - 1.25;
-        let z = (((model_index / 2) as f32) * -2.0) + 1.0;
+        let x = self.data.model_instances[model_index].position[0] - self.data.camera.position[0];
+        let y = self.data.model_instances[model_index].position[1] - self.data.camera.position[1];
+        let z = self.data.model_instances[model_index].position[2] - self.data.camera.position[2];
+
+        let model_index = self.data.model_instances[model_index].model_index;
+
+        //let y = (((model_index % 2) as f32) * 2.5) - 1.25;
+        //let z = (((model_index / 2) as f32) * -2.0) + 1.0;
 
         let model = glm::translate(
             &glm::identity(),
-            &glm::vec3(0.0, y, z),
+            &glm::vec3(x, y, z),
         );
 
         let time = self.start.elapsed().as_secs_f32();
@@ -349,7 +359,7 @@ impl App {
             64,
             opacity_bytes,
         );
-        self.device.cmd_draw_indexed(command_buffer, self.data.indices.len() as u32, 1, 0, 0, 0);
+        self.device.cmd_draw_indexed(command_buffer, self.data.models[model_index].indices.len() as u32, 1, 0, 0, 0);
 
         self.device.end_command_buffer(command_buffer)?;
 
@@ -424,10 +434,10 @@ impl App {
         self.data.render_finished_semaphores.iter().for_each(|s| self.device.destroy_semaphore(*s, None));
         self.data.image_available_semaphores.iter().for_each(|s| self.device.destroy_semaphore(*s, None));
         self.data.command_pools.iter().for_each(|p| self.device.destroy_command_pool(*p, None));
-        self.device.free_memory(self.data.index_buffer_memory, None);
-        self.device.destroy_buffer(self.data.index_buffer, None);
-        self.device.free_memory(self.data.vertex_buffer_memory, None);
-        self.device.destroy_buffer(self.data.vertex_buffer, None);
+        //self.device.free_memory(self.data.index_buffer_memory, None);
+        //self.device.destroy_buffer(self.data.index_buffer, None);
+        //self.device.free_memory(self.data.vertex_buffer_memory, None);
+        //self.device.destroy_buffer(self.data.vertex_buffer, None);
         for i in 0..self.data.models.len() {
             self.data.models[i].destroy(&self.device);
         }
@@ -644,6 +654,17 @@ impl MyModel {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+struct ModelInstance {
+    model_index: usize,
+    position: [f32; 3],
+}
+
+#[derive(Clone, Debug, Default)]
+struct Camera {
+    position: [f32; 3],
+}
+
 /// The Vulkan handles and associated properties used by our Vulkan app.
 #[derive(Clone, Debug, Default)]
 struct AppData {
@@ -686,14 +707,10 @@ struct AppData {
     texture_image_view: vk::ImageView,
     texture_sampler: vk::Sampler,
     // Model
-    vertices: Vec<Vertex>,
-    indices: Vec<u32>,
     models: Vec<MyModel>,
+    model_instances: Vec<ModelInstance>,
+    camera: Camera,
     // Buffers
-    vertex_buffer: vk::Buffer,
-    vertex_buffer_memory: vk::DeviceMemory,
-    index_buffer: vk::Buffer,
-    index_buffer_memory: vk::DeviceMemory,
     uniform_buffers: Vec<vk::Buffer>,
     uniform_buffers_memory: Vec<vk::DeviceMemory>,
     // Descriptors
@@ -1765,8 +1782,15 @@ fn load_model(instance: &Instance, device: &Device, data: &mut AppData) -> Resul
         data.models.push(model);
     }
 
+    for model_index in 0..4 {
+        let y = (((model_index % 2) as f32) * 2.5) - 1.25;
+        let z = (((model_index / 2) as f32) * -2.0) + 1.0;
 
-    let mut reader = BufReader::new(File::open("./resources/viking_room.obj")?);
+        data.model_instances.push(ModelInstance{ model_index,  position: [0.0, y, z]});
+    }
+
+
+    /*let mut reader = BufReader::new(File::open("./resources/viking_room.obj")?);
 
     let (models, _) = tobj::load_obj_buf(&mut reader, true, |_| {
         let mut map = HashMap::new();
@@ -1805,7 +1829,7 @@ fn load_model(instance: &Instance, device: &Device, data: &mut AppData) -> Resul
                 data.indices.push(index as u32);
             }
         }
-    }
+    }*/
 
     Ok(())
 }
@@ -1814,7 +1838,7 @@ fn load_model(instance: &Instance, device: &Device, data: &mut AppData) -> Resul
 // Buffers
 //================================================
 
-unsafe fn create_vertex_buffer(instance: &Instance, device: &Device, data: &mut AppData) -> Result<()> {
+/*unsafe fn create_vertex_buffer(instance: &Instance, device: &Device, data: &mut AppData) -> Result<()> {
     // Create (staging)
 
     let size = (size_of::<Vertex>() * data.vertices.len()) as u64;
@@ -1908,7 +1932,7 @@ unsafe fn create_index_buffer(instance: &Instance, device: &Device, data: &mut A
     device.free_memory(staging_buffer_memory, None);
 
     Ok(())
-}
+}*/
 
 unsafe fn create_uniform_buffers(instance: &Instance, device: &Device, data: &mut AppData) -> Result<()> {
     data.uniform_buffers.clear();

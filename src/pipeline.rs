@@ -1,7 +1,7 @@
+use crate::use_decl::*;
+use crate::setup::*;
 use crate::app::*;
 use crate::device_selection::*;
-use crate::setup::*;
-use crate::use_decl::*;
 
 //================================================
 // Pipeline
@@ -13,11 +13,7 @@ If you want a process to render, you put all assiciated info into the pipeline,
 and then send the pipeline to the gpu.
 */
 
-pub unsafe fn create_render_pass(
-    instance: &Instance,
-    device: &Device,
-    data: &mut AppData,
-) -> Result<()> {
+pub unsafe fn create_render_pass(instance: &Instance, device: &Device, data: &mut AppData) -> Result<()> {
     // Attachments
 
     let color_attachment = vk::AttachmentDescription::builder()
@@ -61,19 +57,10 @@ pub unsafe fn create_render_pass(
     let dependency = vk::SubpassDependency::builder()
         .src_subpass(vk::SUBPASS_EXTERNAL)
         .dst_subpass(0)
-        .src_stage_mask(
-            vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT
-                | vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS,
-        )
+        .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT | vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS)
         .src_access_mask(vk::AccessFlags::empty())
-        .dst_stage_mask(
-            vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT
-                | vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS,
-        )
-        .dst_access_mask(
-            vk::AccessFlags::COLOR_ATTACHMENT_WRITE
-                | vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
-        );
+        .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT | vk::PipelineStageFlags::EARLY_FRAGMENT_TESTS)
+        .dst_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE | vk::AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE);
 
     // Create
 
@@ -180,9 +167,9 @@ pub unsafe fn create_pipeline(device: &Device, data: &mut AppData) -> Result<()>
     // Multisample State
 
     // The multisampler takes multiple samples of a pixel to determine color and transperancy
-    // Since a texture might be bigger than what is drawn on screen, this is a way to not pick the
+    // Since a texture might be bigger than what is drawn on screen, this is a way to not pick the 
     // nearest pixel but instead blend multiple pixels from texture
-    // Edges can also be made transperant to some extent by looking at how big part of the pixel that
+    // Edges can be made transperant to some extent by looking at how big part of the pixel that
     // is inside the triangle
     let multisample_state = vk::PipelineMultisampleStateCreateInfo::builder()
         .sample_shading_enable(false)
@@ -287,11 +274,7 @@ pub unsafe fn create_framebuffers(device: &Device, data: &mut AppData) -> Result
 // Command Pool
 //================================================
 
-pub unsafe fn create_command_pool(
-    instance: &Instance,
-    device: &Device,
-    data: &mut AppData,
-) -> Result<()> {
+pub unsafe fn create_command_pool(instance: &Instance, device: &Device, data: &mut AppData) -> Result<()> {
     let indices = QueueFamilyIndices::get(instance, data, data.physical_device)?;
 
     let info = vk::CommandPoolCreateInfo::builder().queue_family_index(indices.graphics);
@@ -305,11 +288,7 @@ pub unsafe fn create_command_pool(
 // Depth Objects
 //================================================
 
-pub unsafe fn create_depth_objects(
-    instance: &Instance,
-    device: &Device,
-    data: &mut AppData,
-) -> Result<()> {
+pub unsafe fn create_depth_objects(instance: &Instance, device: &Device, data: &mut AppData) -> Result<()> {
     // Image + Image Memory
 
     let format = get_depth_format(instance, data)?;
@@ -331,12 +310,7 @@ pub unsafe fn create_depth_objects(
 
     // Image View
 
-    data.depth_image_view = create_image_view(
-        device,
-        data.depth_image,
-        format,
-        vk::ImageAspectFlags::DEPTH,
-    )?;
+    data.depth_image_view = create_image_view(device, data.depth_image, format, vk::ImageAspectFlags::DEPTH)?;
 
     Ok(())
 }
@@ -368,8 +342,7 @@ pub unsafe fn get_supported_format(
         .iter()
         .cloned()
         .find(|f| {
-            let properties =
-                instance.get_physical_device_format_properties(data.physical_device, *f);
+            let properties = instance.get_physical_device_format_properties(data.physical_device, *f);
             match tiling {
                 vk::ImageTiling::LINEAR => properties.linear_tiling_features.contains(features),
                 vk::ImageTiling::OPTIMAL => properties.optimal_tiling_features.contains(features),
@@ -383,11 +356,7 @@ pub unsafe fn get_supported_format(
 // Buffers
 //================================================
 
-pub unsafe fn create_vertex_buffer(
-    instance: &Instance,
-    device: &Device,
-    data: &mut AppData,
-) -> Result<()> {
+pub unsafe fn create_vertex_buffer(instance: &Instance, device: &Device, data: &mut AppData) -> Result<()> {
     // Create (staging)
 
     let size = (size_of::<Vertex>() * data.vertices.len()) as u64;
@@ -435,11 +404,7 @@ pub unsafe fn create_vertex_buffer(
     Ok(())
 }
 
-pub unsafe fn create_index_buffer(
-    instance: &Instance,
-    device: &Device,
-    data: &mut AppData,
-) -> Result<()> {
+pub unsafe fn create_index_buffer(instance: &Instance, device: &Device, data: &mut AppData) -> Result<()> {
     // Create (staging)
 
     let size = (size_of::<u32>() * data.indices.len()) as u64;
@@ -487,11 +452,7 @@ pub unsafe fn create_index_buffer(
     Ok(())
 }
 
-pub unsafe fn create_uniform_buffers(
-    instance: &Instance,
-    device: &Device,
-    data: &mut AppData,
-) -> Result<()> {
+pub unsafe fn create_uniform_buffers(instance: &Instance, device: &Device, data: &mut AppData) -> Result<()> {
     data.uniform_buffers.clear();
     data.uniform_buffers_memory.clear();
 
@@ -517,10 +478,10 @@ pub unsafe fn create_uniform_buffers(
 //================================================
 
 /*
-A descriptor is a way for shaders to freely access resources
-like buffers and images. You can set up a buffer that
-contains the transformation matrices and have the vertex shader
-access them through a descriptor.
+A descriptor is a way for shaders to freely access resources 
+like buffers and images. You can set up a buffer that 
+contains the transformation matrices and have the vertex shader 
+access them through a descriptor. 
 */
 
 pub unsafe fn create_descriptor_pool(device: &Device, data: &mut AppData) -> Result<()> {
@@ -619,10 +580,7 @@ pub unsafe fn create_command_buffers(device: &Device, data: &mut AppData) -> Res
         };
 
         let depth_clear_value = vk::ClearValue {
-            depth_stencil: vk::ClearDepthStencilValue {
-                depth: 1.0,
-                stencil: 0,
-            },
+            depth_stencil: vk::ClearDepthStencilValue { depth: 1.0, stencil: 0 },
         };
 
         let clear_values = &[color_clear_value, depth_clear_value];
@@ -633,11 +591,7 @@ pub unsafe fn create_command_buffers(device: &Device, data: &mut AppData) -> Res
             .clear_values(clear_values);
 
         device.cmd_begin_render_pass(*command_buffer, &info, vk::SubpassContents::INLINE);
-        device.cmd_bind_pipeline(
-            *command_buffer,
-            vk::PipelineBindPoint::GRAPHICS,
-            data.pipeline,
-        );
+        device.cmd_bind_pipeline(*command_buffer, vk::PipelineBindPoint::GRAPHICS, data.pipeline);
         device.cmd_bind_vertex_buffers(*command_buffer, 0, &[data.vertex_buffer], &[0]);
         device.cmd_bind_index_buffer(*command_buffer, data.index_buffer, 0, vk::IndexType::UINT32);
         device.cmd_bind_descriptor_sets(
@@ -667,11 +621,7 @@ pub struct Vertex {
 
 impl Vertex {
     pub fn new(pos: glm::Vec3, color: glm::Vec3, tex_coord: glm::Vec2) -> Self {
-        Self {
-            pos,
-            color,
-            tex_coord,
-        }
+        Self { pos, color, tex_coord }
     }
 
     pub fn binding_description() -> vk::VertexInputBindingDescription {
