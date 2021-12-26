@@ -64,14 +64,13 @@ pub fn main(game_loop: &mut dyn GameLoop, model_paths: Vec<String>) -> Result<()
     event_loop.run_return(move |event, _, control_flow| {
 
         // Update the game loop
-        game_loop.update(&mut app);
         game_loop.handle_event(&mut app, &event, &window);
 
         // Handle incomming events
         *control_flow = ControlFlow::Poll;
         match event {
             // Render a frame if our Vulkan app is not being destroyed.
-            Event::MainEventsCleared if !destroying && !minimized => unsafe { app.render(&window) }.unwrap(),
+            Event::MainEventsCleared if !destroying && !minimized => unsafe { game_loop.update(&mut app); app.render(&window) }.unwrap(),
             // Mark the window as having been resized.
             Event::WindowEvent { event: WindowEvent::Resized(size), .. } => {
                 if size.width == 0 || size.height == 0 {

@@ -28,8 +28,8 @@ impl main_vulkan::GameLoop for MyGameLoop {
         app.data.camera.position[0] = 6.0;
         app.data.camera.position[2] = 2.0;
 
-        for x in 0..20 {
-            for y in 0..20 {
+        for x in 0..5 {
+            for y in 0..5 {
                 app.data.model_instances.push(ModelInstance{ 
                     model_index: (x+y)%2,  
                     position: glm::vec3(x as f32 * 1.5, y as f32 * 1.5, 0.0),
@@ -48,26 +48,27 @@ impl main_vulkan::GameLoop for MyGameLoop {
         }
     }
     fn update(&mut self, app: &mut main_vulkan::App) {
+        let speed: f32 = 0.05;
         let vec1: glm::TVec3<f32> = glm::vec3(0.0, 1.0, 0.0);
         let forward: glm::TVec3<f32> = glm::rotate_vec3(&vec1, self.angle_x as f32 + std::f32::consts::PI, &glm::vec3(0.0, 0.0, 1.0));
         let right: glm::TVec3<f32> = glm::rotate_vec3(&vec1, self.angle_x as f32 + std::f64::consts::PI as f32 / 2.0, &glm::vec3(0.0, 0.0, 1.0));
         if self.w_pressed {
-            app.data.camera.position += forward * 0.01;
+            app.data.camera.position += forward * speed;
         }
         if self.s_pressed {
-            app.data.camera.position -= forward * 0.01;
+            app.data.camera.position -= forward * speed;
         }
         if self.a_pressed {
-            app.data.camera.position -= right * 0.01;
+            app.data.camera.position -= right * speed;
         }
         if self.d_pressed {
-            app.data.camera.position += right * 0.01;
+            app.data.camera.position += right * speed;
         }
         if self.space_pressed {
-            app.data.camera.position[2] += 0.01;
+            app.data.camera.position[2] += speed;
         }
         if self.shift_pressed {
-            app.data.camera.position[2] -= 0.01;
+            app.data.camera.position[2] -= speed;
         }
     }
     fn handle_event(&mut self, app: &mut main_vulkan::App, event: &Event<()>, window: &winit::window::Window) {
