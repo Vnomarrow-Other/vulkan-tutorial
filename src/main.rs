@@ -28,17 +28,23 @@ impl main_vulkan::GameLoop for MyGameLoop {
         app.data.camera.position[0] = 6.0;
         app.data.camera.position[2] = 2.0;
 
+        for x in 0..20 {
+            for y in 0..20 {
+                app.data.model_instances.push(ModelInstance{ 
+                    model_index: (x+y)%2,  
+                    position: glm::vec3(x as f32 * 1.5, y as f32 * 1.5, 0.0),
+                    rotate_rad: glm::radians(&glm::vec1(90.0))[0],
+                    rotate_vec: glm::vec3(0.0, 0.0, 1.0),
+                });
+            }
+        }
+
         // Load some models on screen
         for model_index in 0..4 {
             let y = (((model_index % 2) as f32) * 2.5) - 1.25;
             let z = (((model_index / 2) as f32) * -2.0) + 1.0;
     
-            app.data.model_instances.push(ModelInstance{ 
-                model_index: model_index%2,  
-                position: glm::vec3(0.0, y, z),
-                rotate_rad: glm::radians(&glm::vec1(90.0))[0],
-                rotate_vec: glm::vec3(0.0, 0.0, 1.0),
-            });
+            
         }
     }
     fn update(&mut self, app: &mut main_vulkan::App) {

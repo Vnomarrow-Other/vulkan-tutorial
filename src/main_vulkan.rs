@@ -93,6 +93,12 @@ pub fn main(game_loop: &mut dyn GameLoop, model_paths: Vec<String>) -> Result<()
     return Ok(());
 }
 
+#[derive(Clone, Debug)]
+struct FPSTracker {
+    last_secs_update: f32,
+    frame_renders: usize
+}
+
 /// Our Vulkan app.
 #[derive(Clone, Debug)]
 pub struct App {
@@ -104,6 +110,7 @@ pub struct App {
     resized: bool,
     start: Instant,
     models: usize,
+    fps_tracker: FPSTracker,
 }
 
 impl App {
@@ -145,6 +152,7 @@ impl App {
             resized: false,
             start: Instant::now(),
             models: 1,
+            fps_tracker: FPSTracker{last_secs_update: 0.0, frame_renders: 0},
         })
     }
 
@@ -216,6 +224,14 @@ impl App {
         }
 
         self.frame = (self.frame + 1) % MAX_FRAMES_IN_FLIGHT;
+
+        if self.start.elapsed().as_secs_f32() - self.fps_tracker.last_secs_update > 1.0 {
+            println!("fps: {}", self.fps_tracker.frame_renders);
+            self.fps_tracker.last_secs_update += 1.0;
+            self.fps_tracker.frame_renders = 0;
+        }
+        self.fps_tracker.frame_renders += 1;
+
 
         Ok(())
     }
