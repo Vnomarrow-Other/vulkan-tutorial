@@ -53,7 +53,8 @@ pub fn main(game_loop: &mut dyn GameLoop, model_paths: Vec<String>) -> Result<()
         .with_title("Vulkan Tutorial (Rust)")
         .with_inner_size(LogicalSize::new(1024, 768))
         .build(&event_loop)?;
-
+        window.set_cursor_visible(false);
+    //window.set_cursor_grab(true)?;
     // Init the App
 
     let mut app = unsafe { App::create(&window, model_paths)? };
@@ -64,7 +65,7 @@ pub fn main(game_loop: &mut dyn GameLoop, model_paths: Vec<String>) -> Result<()
 
         // Update the game loop
         game_loop.update(&mut app);
-        game_loop.handle_event(&mut app, &event);
+        game_loop.handle_event(&mut app, &event, &window);
 
         // Handle incomming events
         *control_flow = ControlFlow::Poll;
@@ -391,7 +392,7 @@ impl App {
         let eye = glm::vec3(self.data.camera.position[0] / render_distance, self.data.camera.position[1] / render_distance, self.data.camera.position[2] / render_distance);
 
         // Set where camera is looking
-        let center = eye - glm::vec3(6.0 as f32, 0.0 as f32, 2.0 as f32);
+        let center = glm::vec3(self.data.camera.looking_at[0] / render_distance, self.data.camera.looking_at[1] / render_distance, self.data.camera.looking_at[2] / render_distance);
 
         // Set what is "up" (normally y vector)
         let up = glm::vec3(0.0, 0.0, 1.0);
@@ -512,7 +513,7 @@ impl App {
 pub trait GameLoop {
     fn create(&mut self, app: &mut App);
     fn update(&mut self, app: &mut App);
-    fn handle_event(&mut self, app: &mut App, event: &Event<()>);
+    fn handle_event(&mut self, app: &mut App, event: &Event<()>, window: &Window);
 }
 
 // A 3D model
@@ -703,15 +704,16 @@ impl MyModel {
 #[derive(Clone, Debug, Default)]
 pub struct ModelInstance {
     pub model_index: usize,
-    pub position: [f32; 3],
+    pub position: glm::TVec3<f32>,
     pub rotate_rad: f32,
-    pub rotate_vec: [f32; 3]
+    pub rotate_vec: glm::TVec3<f32>
 }
 
 // The camera specifying where and how to look at the world
 #[derive(Clone, Debug, Default)]
 pub struct Camera {
-    pub position: [f32; 3],
+    pub position: glm::TVec3<f32>,
+    pub looking_at: glm::TVec3<f32>
 }
 
 /// The Vulkan handles and associated properties used by our Vulkan app.
