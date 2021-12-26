@@ -84,22 +84,6 @@ pub fn main(game_loop: &mut dyn GameLoop, model_paths: Vec<String>) -> Result<()
                 *control_flow = ControlFlow::Exit;
                 unsafe { app.destroy(); }
             }
-            // Handle keyboard events.
-            Event::WindowEvent { event: WindowEvent::KeyboardInput { input, .. }, .. } => {
-                if input.state == ElementState::Pressed {
-                    match input.virtual_keycode {
-                        Some(VirtualKeyCode::Left) if app.models > 1 => app.models -= 1,
-                        Some(VirtualKeyCode::Right) if app.models < 4 => app.models += 1,
-                        Some(VirtualKeyCode::W) => app.data.camera.position[0] += 1.0,
-                        Some(VirtualKeyCode::S) => app.data.camera.position[0] -= 1.0,
-                        Some(VirtualKeyCode::A) => app.data.camera.position[1] += 1.0,
-                        Some(VirtualKeyCode::D) => app.data.camera.position[1] -= 1.0,
-                        Some(VirtualKeyCode::Space) => app.data.camera.position[2] += 1.0,
-                        Some(VirtualKeyCode::LShift) => app.data.camera.position[2] -= 1.0,
-                        _ => { }
-                    }
-                }
-            }
             _ => {}
         }
     });
@@ -320,7 +304,6 @@ impl App {
         let y = self.data.model_instances[model_index].position[1];
         let z = self.data.model_instances[model_index].position[2];
 
-        let model_index = self.data.model_instances[model_index].model_index;
         //let model_index = 0;
 
         // Create the Model matrix(applied to all vertecies), set the positions of the model
@@ -332,12 +315,20 @@ impl App {
         // Get the time since the app started
         let time = self.start.elapsed().as_secs_f32();
 
+        let rotate_vec = glm::vec3( self.data.model_instances[model_index].rotate_vec[0], 
+            self.data.model_instances[model_index].rotate_vec[1], 
+            self.data.model_instances[model_index].rotate_vec[2]);
+        //let rotate_rad = time * glm::radians(&glm::vec1(90.0))[0];
+        let rotate_rad = self.data.model_instances[model_index].rotate_rad;
+
         // Change to model matrix to also do a rotation
         let model = glm::rotate(
             &model,
-            time * glm::radians(&glm::vec1(90.0))[0],
-            &glm::vec3(0.0, 0.0, 1.0),
+            rotate_rad,
+            &rotate_vec.clone(),
         );
+
+        let model_index = self.data.model_instances[model_index].model_index;
 
         let (_, model_bytes, _) = model.as_slice().align_to::<u8>();
 
@@ -711,6 +702,8 @@ impl MyModel {
 pub struct ModelInstance {
     pub model_index: usize,
     pub position: [f32; 3],
+    pub rotate_rad: f32,
+    pub rotate_vec: [f32; 3]
 }
 
 // The camera specifying where and how to look at the world
