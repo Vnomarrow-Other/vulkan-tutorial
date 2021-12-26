@@ -29,6 +29,8 @@ use vulkanalia::vk::ExtDebugUtilsExtension;
 use vulkanalia::vk::KhrSurfaceExtension;
 use vulkanalia::vk::KhrSwapchainExtension;
 
+const render_distance: f32 = 3.0;
+
 /// Whether the validation layers should be enabled.
 const VALIDATION_ENABLED: bool = cfg!(debug_assertions);
 /// The name of the validation layers.
@@ -300,9 +302,9 @@ impl App {
 
         // Push Constants
 
-        let x = self.data.model_instances[model_index].position[0];
-        let y = self.data.model_instances[model_index].position[1];
-        let z = self.data.model_instances[model_index].position[2];
+        let x = self.data.model_instances[model_index].position[0] / render_distance;
+        let y = self.data.model_instances[model_index].position[1] / render_distance;
+        let z = self.data.model_instances[model_index].position[2] / render_distance;
 
         //let model_index = 0;
 
@@ -386,10 +388,10 @@ impl App {
         // Set the camera view point
 
         // Set camera position
-        let eye = glm::vec3(self.data.camera.position[0], self.data.camera.position[1], self.data.camera.position[2]);
+        let eye = glm::vec3(self.data.camera.position[0] / render_distance, self.data.camera.position[1] / render_distance, self.data.camera.position[2] / render_distance);
 
         // Set where camera is looking
-        let center = glm::vec3(self.data.camera.position[0] - 6.0 as f32, self.data.camera.position[1], self.data.camera.position[2] - 2.0 as f32);
+        let center = eye - glm::vec3(6.0 as f32, 0.0 as f32, 2.0 as f32);
 
         // Set what is "up" (normally y vector)
         let up = glm::vec3(0.0, 0.0, 1.0);
@@ -671,9 +673,9 @@ impl MyModel {
     
                 let vertex = Vertex {
                     pos: glm::vec3(
-                        model.mesh.positions[pos_offset],
-                        model.mesh.positions[pos_offset + 1],
-                        model.mesh.positions[pos_offset + 2],
+                        model.mesh.positions[pos_offset] / render_distance,
+                        model.mesh.positions[pos_offset + 1] / render_distance,
+                        model.mesh.positions[pos_offset + 2] / render_distance,
                     ),
                     color: glm::vec3(1.0, 1.0, 1.0),
                     tex_coord: glm::vec2(
