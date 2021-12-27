@@ -31,8 +31,8 @@ impl main_vulkan::GameLoop for MyGameLoop {
         for x in 0..5 {
             for y in 0..5 {
                 app.data.model_instances.push(ModelInstance{ 
-                    model_index: (x+y)%2,  
-                    position: glm::vec3(x as f32 * 1.5, y as f32 * 1.5, 0.0),
+                    model_index: 0,  
+                    position: glm::vec3(x as f32 * 1.001, y as f32 * 1.001, 0.0),
                     rotate_rad: glm::radians(&glm::vec1(90.0))[0],
                     rotate_vec: glm::vec3(0.0, 0.0, 1.0),
                 });
@@ -128,6 +128,6 @@ impl main_vulkan::GameLoop for MyGameLoop {
 
 fn main() -> Result<()> {
     let mut a = MyGameLoop::default();
-    main_vulkan::main(&mut a, vec!("./resources/gifts.obj".to_string(), "./resources/viking_room.obj".to_string()))?;
+    main_vulkan::main(&mut a, vec!("./resources/grey_block.obj".to_string(), "./resources/viking_room.obj".to_string()))?;
     return Ok(());
 }

@@ -16,7 +16,7 @@ use anyhow::{anyhow, Result};
 use log::*;
 use nalgebra_glm as glm;
 use thiserror::Error;
-use vulkanalia::loader::{LibloadingLoader, LIBRARY};
+use vulkanalia::loader::{LibloadingLoader, LIBRARY, Loader};
 use vulkanalia::prelude::v1_0::*;
 use vulkanalia::window as vk_window;
 use winit::dpi::LogicalSize;
@@ -745,13 +745,57 @@ impl MyModel {
     }
     // Load a model from a file
     pub fn load_model(&mut self, path: &str) -> Result<()> {
+        // Load the verticies and indices, make sure there are no dubble verticies
+        let mut unique_vertices = HashMap::new();
+
         // Read the OBJ file
         let mut reader = BufReader::new(File::open(path)?);
+
+        //let (models, materials) = tobj::load_obj(path, true)?;
+
+        let (models, materials) = tobj::load_obj_buf(&mut reader, true, |_| {
+            let mut map = HashMap::new();
+            //map.insert("Texture1".to_string(), 0);
+            Ok((vec![tobj::Material::empty()], map))
+        })?;
+
+        for model in &models {
+            for index in &model.mesh.indices {
+                let pos_offset = (3 * index) as usize;
+                let tex_coord_offset = (2 * index) as usize;
+
+                //let material = &materials[model.mesh.material_id.unwrap()];
+                let color = vec!(0.1, 0.1, 0.1);
+                let color: glm::TVec3<f32> = glm::vec3(color[0], color[1], color[2]);
     
-        // Not sure what it does
+                let vertex = Vertex {
+                    pos: glm::vec3(
+                        model.mesh.positions[pos_offset] / render_distance,
+                        model.mesh.positions[pos_offset + 1] / render_distance,
+                        model.mesh.positions[pos_offset + 2] / render_distance,
+                    ),
+                    color,
+                    tex_coord: glm::vec2(
+                        model.mesh.texcoords[tex_coord_offset],
+                        1.0 - model.mesh.texcoords[tex_coord_offset + 1],
+                    ),
+                };
+    
+                if let Some(index) = unique_vertices.get(&vertex) {
+                    self.indices.push(*index as u32);
+                } else {
+                    let index = self.vertices.len();
+                    unique_vertices.insert(vertex, index);
+                    self.vertices.push(vertex);
+                    self.indices.push(index as u32);
+                }
+            }
+        }
+    
+        /*// Not sure what it does
         let (models, _) = tobj::load_obj_buf(&mut reader, true, |_| {
             let mut map = HashMap::new();
-            map.insert("Texture1".to_string(), 0);
+            //map.insert("Texture1".to_string(), 0);
             Ok((vec![tobj::Material::empty()], map))
         })?;
     
@@ -763,6 +807,8 @@ impl MyModel {
             for index in &model.mesh.indices {
                 let pos_offset = (3 * index) as usize;
                 let tex_coord_offset = (2 * index) as usize;
+
+                model.mesh.material_id
     
                 let vertex = Vertex {
                     pos: glm::vec3(
@@ -786,7 +832,7 @@ impl MyModel {
                     self.indices.push(index as u32);
                 }
             }
-        }
+        }*/
     
         Ok(())
     }
@@ -1638,7 +1684,8 @@ unsafe fn get_supported_format(
 unsafe fn create_texture_image(instance: &Instance, device: &Device, data: &mut AppData) -> Result<()> {
     // Load
 
-    let image = File::open("./resources/viking_room.png")?;
+    //let image = File::open("./resources/viking_room.png")?;
+    let image = File::open("./resources/grey_square.png")?;
 
     let decoder = png::Decoder::new(image);
     let (info, mut reader) = decoder.read_info()?;
