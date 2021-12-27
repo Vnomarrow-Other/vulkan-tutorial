@@ -25,7 +25,7 @@ use winit::event_loop::{ControlFlow, EventLoop};
 use winit::platform::run_return::EventLoopExtRunReturn;
 use winit::window::{Window, WindowBuilder};
 
-use vulkanalia::vk::ExtDebugUtilsExtension;
+use vulkanalia::vk::{ExtDebugUtilsExtension, CommandBuffer};
 use vulkanalia::vk::KhrSurfaceExtension;
 use vulkanalia::vk::KhrSwapchainExtension;
 
@@ -61,8 +61,13 @@ pub fn main(game_loop: &mut dyn GameLoop, model_paths: Vec<String>) -> Result<()
     game_loop.create(&mut app);
     let mut destroying = false;
     let mut minimized = false;
+
+    let mut loop_timer = TimeTracker::new();
     event_loop.run_return(move |event, _, control_flow| {
 
+        //loop_timer.print_elapsed("since loop end");
+
+        let mut time_tracker = TimeTracker::new();
         // Update the game loop
         game_loop.handle_event(&mut app, &event, &window);
 
@@ -70,7 +75,12 @@ pub fn main(game_loop: &mut dyn GameLoop, model_paths: Vec<String>) -> Result<()
         *control_flow = ControlFlow::Poll;
         match event {
             // Render a frame if our Vulkan app is not being destroyed.
-            Event::MainEventsCleared if !destroying && !minimized => unsafe { game_loop.update(&mut app); app.render(&window) }.unwrap(),
+            Event::MainEventsCleared if !destroying && !minimized => unsafe {
+                //loop_timer.print_elapsed("loop_time");
+                game_loop.update(&mut app); 
+                loop_timer.reset(); 
+                app.render(&window).unwrap();
+            },
             // Mark the window as having been resized.
             Event::WindowEvent { event: WindowEvent::Resized(size), .. } => {
                 if size.width == 0 || size.height == 0 {
@@ -88,6 +98,7 @@ pub fn main(game_loop: &mut dyn GameLoop, model_paths: Vec<String>) -> Result<()
             }
             _ => {}
         }
+        //time_tracker.print_elapsed("main");
     });
     return Ok(());
 }
@@ -96,6 +107,24 @@ pub fn main(game_loop: &mut dyn GameLoop, model_paths: Vec<String>) -> Result<()
 struct FPSTracker {
     last_secs_update: f32,
     frame_renders: usize
+}
+
+struct TimeTracker {
+    start: Instant
+}
+
+impl TimeTracker {
+    pub fn new() -> Self {
+        Self {
+            start: Instant::now()
+        }
+    }
+    pub fn print_elapsed(&self, msg: &str) {
+        println!("{}: {}", msg, self.start.elapsed().as_secs_f64());
+    }
+    pub fn reset(&mut self) {
+        self.start = Instant::now();
+    }
 }
 
 /// Our Vulkan app.
@@ -157,11 +186,15 @@ impl App {
 
     /// Render a frame for our Vulkan app.
     unsafe fn render(&mut self, window: &Window) -> Result<()> {
+        let time_tracker = TimeTracker::new();
         let in_flight_fence = self.data.in_flight_fences[self.frame];
 
+        let mut time_tracker = TimeTracker::new();
         // Wait for GPU
         self.device
             .wait_for_fences(&[in_flight_fence], true, u64::max_value())?;
+        // time_tracker.print_elapsed("wait_for_fences");
+        //time_tracker.reset();
 
         // Handle result from GPU
         let result = self.device.acquire_next_image_khr(
@@ -186,9 +219,20 @@ impl App {
 
         self.data.images_in_flight[image_index] = in_flight_fence;
 
+        // No slowdown
+
+        //time_tracker.print_elapsed("total");
+        // Slows down program
         // Update which commands are sent to GPU
         self.update_command_buffer(image_index)?;
+
+        // Slowdown
+
+        let time_tracker = TimeTracker::new();
+        //time_tracker.print_elapsed("total");
         self.update_uniform_buffer(image_index)?;
+        
+        // Slowdown
 
         // Do other stuff; not sure what it does
         let wait_semaphores = &[self.data.image_available_semaphores[self.frame]];
@@ -202,6 +246,8 @@ impl App {
             .signal_semaphores(signal_semaphores);
 
         self.device.reset_fences(&[in_flight_fence])?;
+
+        // Slowdown
 
         self.device
             .queue_submit(self.data.graphics_queue, &[submit_info], in_flight_fence)?;
@@ -231,6 +277,7 @@ impl App {
         }
         self.fps_tracker.frame_renders += 1;
 
+        //time_tracker.print_elapsed("total");
 
         Ok(())
     }
@@ -240,9 +287,29 @@ impl App {
     #[rustfmt::skip]
     unsafe fn update_command_buffer(&mut self, image_index: usize) -> Result<()> {
         // Reset
-
+        //println!("{}", image_index);
         let command_pool = self.data.command_pools[image_index];
+        //self.device.free_command_buffers(self.data.command_pool, &[self.data.command_buffers[image_index]]);
+        //self.device.destroy_buffer(&self.data.command_buffers[image_index], None);
+
+        for i in &self.data.secondary_command_buffers[image_index] {
+            self.device.free_command_buffers(command_pool, &[*i]);
+        }
+        // Fix bug! (reset_command_pool does not fully deallocate all buffers)
+        self.device.free_command_buffers(command_pool, &[self.data.command_buffers[image_index]]);
+        self.data.secondary_command_buffers[image_index] = vec!();
+
+        // This call takes longer and longer time
+        let time_tracker = TimeTracker::new();
         self.device.reset_command_pool(command_pool, vk::CommandPoolResetFlags::empty())?;
+
+        //time_tracker.print_elapsed("reset_command_pool");
+
+        // None of the other calls are any slower
+
+        let time_tracker = TimeTracker::new();
+
+        //self.device.free_command_buffers(self.data.command_pool, &[self.data.command_buffers[image_index]]);
 
         // Allocate the command Buffer
 
@@ -288,14 +355,20 @@ impl App {
             .map(|i| self.update_secondary_command_buffer(image_index, i))
             .collect::<Result<Vec<_>, _>>()?;
 
+        //println!("{}", self.data.model_instances.len());
+
         // Ask GPU to execute the commands (I think? )
         if secondary_command_buffers.len() != 0 {
             self.device.cmd_execute_commands(command_buffer, &secondary_command_buffers[..]);
+            //device.free_memory(self.index_buffer_memory, None);
+            //device.destroy_buffer(self.index_buffer, None);
         }
 
         self.device.cmd_end_render_pass(command_buffer);
 
         self.device.end_command_buffer(command_buffer)?;
+
+        //time_tracker.print_elapsed("update_command_buffer");
 
         Ok(())
     }
@@ -305,7 +378,7 @@ impl App {
     unsafe fn update_secondary_command_buffer(
         &mut self,
         image_index: usize,
-        model_index: usize,
+        model_instance_index: usize,
     ) -> Result<vk::CommandBuffer> {
         // Allocate the secondary command buffer
 
@@ -318,9 +391,9 @@ impl App {
 
         // Push Constants
 
-        let x = self.data.model_instances[model_index].position[0] / render_distance;
-        let y = self.data.model_instances[model_index].position[1] / render_distance;
-        let z = self.data.model_instances[model_index].position[2] / render_distance;
+        let x = self.data.model_instances[model_instance_index].position[0] / render_distance;
+        let y = self.data.model_instances[model_instance_index].position[1] / render_distance;
+        let z = self.data.model_instances[model_instance_index].position[2] / render_distance;
 
         //let model_index = 0;
 
@@ -333,11 +406,11 @@ impl App {
         // Get the time since the app started
         let time = self.start.elapsed().as_secs_f32();
 
-        let rotate_vec = glm::vec3( self.data.model_instances[model_index].rotate_vec[0], 
-            self.data.model_instances[model_index].rotate_vec[1], 
-            self.data.model_instances[model_index].rotate_vec[2]);
+        let rotate_vec = glm::vec3( self.data.model_instances[model_instance_index].rotate_vec[0], 
+            self.data.model_instances[model_instance_index].rotate_vec[1], 
+            self.data.model_instances[model_instance_index].rotate_vec[2]);
         //let rotate_rad = time * glm::radians(&glm::vec1(90.0))[0];
-        let rotate_rad = self.data.model_instances[model_index].rotate_rad;
+        let rotate_rad = self.data.model_instances[model_instance_index].rotate_rad;
 
         // Change to model matrix to also do a rotation
         let model = glm::rotate(
@@ -346,7 +419,7 @@ impl App {
             &rotate_vec.clone(),
         );
 
-        let model_index = self.data.model_instances[model_index].model_index;
+        let model_index = self.data.model_instances[model_instance_index].model_index;
 
         let (_, model_bytes, _) = model.as_slice().align_to::<u8>();
 
@@ -392,6 +465,8 @@ impl App {
             64,
             opacity_bytes,
         );
+
+        self.data.secondary_command_buffers[image_index].push(command_buffer);
         self.device.cmd_draw_indexed(command_buffer, self.data.models[model_index].indices.len() as u32, 1, 0, 0, 0);
 
         self.device.end_command_buffer(command_buffer)?;
@@ -450,7 +525,9 @@ impl App {
     ///     When the draw image is complete, they "swap")
     #[rustfmt::skip]
     unsafe fn recreate_swapchain(&mut self, window: &Window) -> Result<()> {
+        let time_tracker = TimeTracker::new();
         self.device.device_wait_idle()?;
+        time_tracker.print_elapsed("time recreate_swapchain: ");
         self.destroy_swapchain();
         create_swapchain(window, &self.instance, &self.device, &mut self.data)?;
         create_swapchain_image_views(&self.device, &mut self.data)?;
@@ -785,6 +862,7 @@ pub struct AppData {
     // Command Buffers
     command_pools: Vec<vk::CommandPool>,
     command_buffers: Vec<vk::CommandBuffer>,
+    secondary_command_buffers: Vec<Vec<CommandBuffer>>,
     // Sync Objects
     image_available_semaphores: Vec<vk::Semaphore>,
     render_finished_semaphores: Vec<vk::Semaphore>,
@@ -1943,6 +2021,7 @@ unsafe fn create_descriptor_sets(device: &Device, data: &mut AppData) -> Result<
 
 unsafe fn create_command_buffers(device: &Device, data: &mut AppData) -> Result<()> {
     data.command_buffers = vec![vk::CommandBuffer::null(); data.framebuffers.len()];
+    data.secondary_command_buffers.resize(data.framebuffers.len(), vec!());
 
     Ok(())
 }

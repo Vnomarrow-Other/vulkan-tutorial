@@ -43,8 +43,6 @@ impl main_vulkan::GameLoop for MyGameLoop {
         for model_index in 0..4 {
             let y = (((model_index % 2) as f32) * 2.5) - 1.25;
             let z = (((model_index / 2) as f32) * -2.0) + 1.0;
-    
-            
         }
     }
     fn update(&mut self, app: &mut main_vulkan::App) {
