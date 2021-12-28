@@ -28,11 +28,11 @@ impl main_vulkan::GameLoop for MyGameLoop {
         app.data.camera.position[0] = 6.0;
         app.data.camera.position[2] = 2.0;
 
-        for x in 0..5 {
-            for y in 0..5 {
+        for x in 0..1 {
+            for y in 0..1 {
                 app.data.model_instances.push(ModelInstance{ 
                     model_index: 0,  
-                    position: glm::vec3(x as f32 * 1.001, y as f32 * 1.001, 0.0),
+                    position: glm::vec3(x as f32 * 1.0, y as f32 * 1.0, 0.0),
                     rotate_rad: glm::radians(&glm::vec1(90.0))[0],
                     rotate_vec: glm::vec3(0.0, 0.0, 1.0),
                 });
@@ -105,6 +105,14 @@ impl main_vulkan::GameLoop for MyGameLoop {
                     self.angle_x -= ((2.0 * std::f64::consts::PI * (position.x - 512.0)) / 1024.0) / sensitivity;
                     self.angle_y -= ((2.0 * std::f64::consts::PI * (position.y - 384.0)) / 768.0) / sensitivity;
 
+                    // Make sure the world does not become upside down
+                    if self.angle_y < -std::f64::consts::PI/2.0 {
+                        self.angle_y = -std::f64::consts::PI/2.0;
+                    }
+                    else if self.angle_y > std::f64::consts::PI/2.0 {
+                        self.angle_y = std::f64::consts::PI/2.0;
+                    }
+
                     let vec1: glm::TVec3<f32> = glm::vec3(0.0, 1.0, 0.0);
                     let vec2: glm::TVec3<f32> = glm::rotate_vec3(&vec1, self.angle_x as f32, &glm::vec3(0.0, 0.0, 1.0));
                     let vec3: glm::TVec3<f32> = glm::rotate_vec3(&vec1, self.angle_x as f32 + std::f64::consts::PI as f32 / 2.0, &glm::vec3(0.0, 0.0, 1.0));
@@ -128,6 +136,6 @@ impl main_vulkan::GameLoop for MyGameLoop {
 
 fn main() -> Result<()> {
     let mut a = MyGameLoop::default();
-    main_vulkan::main(&mut a, vec!("./resources/grey_block.obj".to_string(), "./resources/viking_room.obj".to_string()))?;
+    main_vulkan::main(&mut a, vec!("./resources/chess/chess_set.obj".to_string()))?;
     return Ok(());
 }

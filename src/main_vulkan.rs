@@ -29,7 +29,7 @@ use vulkanalia::vk::{ExtDebugUtilsExtension, CommandBuffer};
 use vulkanalia::vk::KhrSurfaceExtension;
 use vulkanalia::vk::KhrSwapchainExtension;
 
-const render_distance: f32 = 3.0;
+const render_distance: f32 = 10.0;
 
 /// Whether the validation layers should be enabled.
 const VALIDATION_ENABLED: bool = cfg!(debug_assertions);
@@ -748,36 +748,57 @@ impl MyModel {
         // Load the verticies and indices, make sure there are no dubble verticies
         let mut unique_vertices = HashMap::new();
 
+         // Read the MTL file
+         let mut reader = BufReader::new(File::open("./resources/chess/chess_set.mtl")?);
+
+         //let (models, materials) = tobj::load_obj(path, true)?;
+ 
+         let materials2 = tobj::load_mtl_buf(&mut reader)?;
+
+         let materials = (&materials2).0.clone();
+
         // Read the OBJ file
         let mut reader = BufReader::new(File::open(path)?);
 
         //let (models, materials) = tobj::load_obj(path, true)?;
 
-        let (models, materials) = tobj::load_obj_buf(&mut reader, true, |_| {
-            let mut map = HashMap::new();
-            //map.insert("Texture1".to_string(), 0);
-            Ok((vec![tobj::Material::empty()], map))
+        let (models, _) = tobj::load_obj_buf(&mut reader, true, |_| {
+            Ok(materials2.clone())
         })?;
 
-        for model in &models {
+        //let materials = materials.0;
+        println!("materials: {}", materials.len());
+        println!("models: {}", models.len());
+
+        for model_index in 0..models.len() {
+            let model = &models[model_index];
             for index in &model.mesh.indices {
                 let pos_offset = (3 * index) as usize;
                 let tex_coord_offset = (2 * index) as usize;
 
-                //let material = &materials[model.mesh.material_id.unwrap()];
-                let color = vec!(0.1, 0.1, 0.1);
+                let color: [f32; 3];
+                if model.mesh.material_id.is_some() {
+                    let material = &materials[model.mesh.material_id.unwrap()];
+                    color = material.diffuse;
+                }
+                else {
+                    color = [1.0, 0.0, 0.0];
+                }
+
                 let color: glm::TVec3<f32> = glm::vec3(color[0], color[1], color[2]);
+
     
+                model.mesh.material_id;
                 let vertex = Vertex {
                     pos: glm::vec3(
                         model.mesh.positions[pos_offset] / render_distance,
-                        model.mesh.positions[pos_offset + 1] / render_distance,
                         model.mesh.positions[pos_offset + 2] / render_distance,
+                        model.mesh.positions[pos_offset + 1] / render_distance,
                     ),
                     color,
-                    tex_coord: glm::vec2(
-                        model.mesh.texcoords[tex_coord_offset],
-                        1.0 - model.mesh.texcoords[tex_coord_offset + 1],
+                    tex_coord: glm::vec2(0.0, 0.0
+                        /*model.mesh.texcoords[tex_coord_offset],
+                        1.0 - model.mesh.texcoords[tex_coord_offset + 1],*/
                     ),
                 };
     
