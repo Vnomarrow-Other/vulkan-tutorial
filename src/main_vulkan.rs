@@ -772,6 +772,7 @@ impl MyModel {
 
         for model_index in 0..models.len() {
             let model = &models[model_index];
+            println!("{}", model.name);
             for index in &model.mesh.indices {
                 let pos_offset = (3 * index) as usize;
                 let tex_coord_offset = (2 * index) as usize;
@@ -787,7 +788,6 @@ impl MyModel {
 
                 let color: glm::TVec3<f32> = glm::vec3(color[0], color[1], color[2]);
 
-    
                 model.mesh.material_id;
                 let vertex = Vertex {
                     pos: glm::vec3(

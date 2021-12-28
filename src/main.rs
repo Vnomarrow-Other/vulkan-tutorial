@@ -19,6 +19,58 @@ struct MyGameLoop {
     shift_pressed: bool
 }
 
+impl MyGameLoop {
+    pub fn load_chess_board(&mut self, app: &mut main_vulkan::App) {
+        app.data.model_instances = Default::default();
+        self.load_board(app);
+
+        for x in 0..8 {
+            self.load_chess_model(app, ChessModel::white_pawn, x, 1);
+            self.load_chess_model(app, ChessModel::black_pawn, x, 6);
+        }
+
+        self.load_chess_model(app, ChessModel::white_rook, 0, 0);
+        self.load_chess_model(app, ChessModel::black_rook, 0, 7);
+
+        self.load_chess_model(app, ChessModel::white_knight, 1, 0);
+        self.load_chess_model(app, ChessModel::black_knight, 1, 7);
+
+        self.load_chess_model(app, ChessModel::white_bishop, 2, 0);
+        self.load_chess_model(app, ChessModel::black_bishop, 2, 7);
+
+        self.load_chess_model(app, ChessModel::white_queen, 3, 0);
+        self.load_chess_model(app, ChessModel::black_queen, 3, 7);
+
+        self.load_chess_model(app, ChessModel::white_king, 4, 0);
+        self.load_chess_model(app, ChessModel::black_king, 4, 7);
+
+        self.load_chess_model(app, ChessModel::white_bishop, 5, 0);
+        self.load_chess_model(app, ChessModel::black_bishop, 5, 7);
+
+        self.load_chess_model(app, ChessModel::white_knight, 6, 0);
+        self.load_chess_model(app, ChessModel::black_knight, 6, 7);
+
+        self.load_chess_model(app, ChessModel::white_rook, 7, 0);
+        self.load_chess_model(app, ChessModel::black_rook, 7, 7);
+    }
+    pub fn load_chess_model(&mut self, app: &mut main_vulkan::App, id: ChessModel, x: usize, y: usize){
+        app.data.model_instances.push(ModelInstance{ 
+            model_index: id as usize,  
+            position: glm::vec3(x as f32 * 2.0, y as f32 * 2.0, 0.0),
+            rotate_rad: glm::radians(&glm::vec1(90.0))[0],
+            rotate_vec: glm::vec3(0.0, 0.0, 1.0),
+        });
+    }
+    pub fn load_board(&mut self, app: &mut main_vulkan::App) {
+        app.data.model_instances.push(ModelInstance{ 
+            model_index: ChessModel::board as usize,  
+            position: glm::vec3(7.0, 7.0, 0.0),
+            rotate_rad: glm::radians(&glm::vec1(90.0))[0],
+            rotate_vec: glm::vec3(0.0, 0.0, 1.0),
+        });
+    }
+}
+
 impl main_vulkan::GameLoop for MyGameLoop {
     fn create(&mut self, app: &mut main_vulkan::App) {
         self.look_vec = glm::vec3(6.0, 0.0, 2.0);
@@ -27,17 +79,6 @@ impl main_vulkan::GameLoop for MyGameLoop {
         self.grab = true;
         app.data.camera.position[0] = 6.0;
         app.data.camera.position[2] = 2.0;
-
-        for x in 0..1 {
-            for y in 0..1 {
-                app.data.model_instances.push(ModelInstance{ 
-                    model_index: 0,  
-                    position: glm::vec3(x as f32 * 1.0, y as f32 * 1.0, 0.0),
-                    rotate_rad: glm::radians(&glm::vec1(90.0))[0],
-                    rotate_vec: glm::vec3(0.0, 0.0, 1.0),
-                });
-            }
-        }
 
         // Load some models on screen
         for model_index in 0..4 {
@@ -68,6 +109,7 @@ impl main_vulkan::GameLoop for MyGameLoop {
         if self.shift_pressed {
             app.data.camera.position[2] -= speed;
         }
+        self.load_chess_board(app);
     }
     fn handle_event(&mut self, app: &mut main_vulkan::App, event: &Event<()>, window: &winit::window::Window) {
         match event {
@@ -134,8 +176,39 @@ impl main_vulkan::GameLoop for MyGameLoop {
     }
 }
 
+enum ChessModel {
+    board,
+    white_pawn,
+    white_queen,
+    white_knight,
+    white_rook,
+    white_king,
+    white_bishop,
+    black_pawn,
+    black_queen,
+    black_knight,
+    black_rook,
+    black_king,
+    black_bishop,
+}
+
 fn main() -> Result<()> {
     let mut a = MyGameLoop::default();
-    main_vulkan::main(&mut a, vec!("./resources/chess/chess_set.obj".to_string()))?;
+    main_vulkan::main(&mut a, vec!(
+        "./resources/chess/board.obj".to_string(),
+        "./resources/chess/white_pawn.obj".to_string(),
+        "./resources/chess/white_queen.obj".to_string(),
+        "./resources/chess/white_knight.obj".to_string(),
+        "./resources/chess/white_rook.obj".to_string(),
+        "./resources/chess/white_king.obj".to_string(),
+        "./resources/chess/white_bishop.obj".to_string(),
+        "./resources/chess/black_pawn.obj".to_string(),
+        "./resources/chess/black_queen.obj".to_string(),
+        "./resources/chess/black_knight.obj".to_string(),
+        "./resources/chess/black_rook.obj".to_string(),
+        "./resources/chess/black_king.obj".to_string(),
+        "./resources/chess/black_bishop.obj".to_string(),
+    )
+    )?;
     return Ok(());
 }
