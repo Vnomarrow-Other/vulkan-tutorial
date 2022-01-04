@@ -110,6 +110,7 @@ impl main_vulkan::GameLoop for MyGameLoop {
             app.data.camera.position[2] -= speed;
         }
         self.load_chess_board(app);
+        app.data.camera.looking_at = app.data.camera.position - self.look_vec;
     }
     fn handle_event(&mut self, app: &mut main_vulkan::App, event: &Event<()>, window: &winit::window::Window) {
         match event {
@@ -172,7 +173,6 @@ impl main_vulkan::GameLoop for MyGameLoop {
 
             }
         }
-        app.data.camera.looking_at = app.data.camera.position - self.look_vec;
     }
 }
 
