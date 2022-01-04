@@ -16,3 +16,4 @@ thiserror = "1"
 tobj = "2"
 vulkanalia = { version = "=0.12.0", features = ["libloading", "window"] }
 winit = "0.24"
+chess_engine = { path = "chess_engine" }

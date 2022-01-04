@@ -5,6 +5,8 @@ use nalgebra_glm as glm;
 pub mod main_vulkan;
 use main_vulkan::*;
 
+use chess_engine::chess_game::*;
+
 /*
 line_p: a point on the line
 line_v: the vector of the line
@@ -39,7 +41,8 @@ struct MyGameLoop {
     space_pressed: bool,
     shift_pressed: bool,
     selected_x: usize,
-    selected_y: usize
+    selected_y: usize,
+    chess_engine: chess_engine::chess_game::Game
 }
 
 impl MyGameLoop {
@@ -48,33 +51,61 @@ impl MyGameLoop {
         self.load_board(app);
 
         for x in 0..8 {
-            self.load_chess_model(app, ChessModel::white_pawn, x, 1);
-            self.load_chess_model(app, ChessModel::black_pawn, x, 6);
+            for y in 0..8 {
+                let chess_piece = self.chess_engine.get_board_piece_clone(BoardPosition::new(x as u8, y as u8));
+                if chess_piece.is_none() {
+                    continue;
+                }
+                let chess_piece = chess_piece.unwrap();
+                match chess_piece.color {
+                    ChessPieceColor::White => {
+                        match chess_piece.id {
+                            ChessPieceId::Bishop => {
+                                self.load_chess_model(app, ChessModel::white_bishop, x, y);
+                            }
+                            ChessPieceId::Rook => {
+                                self.load_chess_model(app, ChessModel::white_rook, x, y);
+                            }
+                            ChessPieceId::King => {
+                                self.load_chess_model(app, ChessModel::white_king, x, y);
+                            }
+                            ChessPieceId::Queen => {
+                                self.load_chess_model(app, ChessModel::white_queen, x, y);
+                            }
+                            ChessPieceId::Knight => {
+                                self.load_chess_model(app, ChessModel::white_knight, x, y);
+                            }
+                            ChessPieceId::Pawn => {
+                                self.load_chess_model(app, ChessModel::white_pawn, x, y);
+                            }
+                        }
+                    }
+                    ChessPieceColor::Black => {
+                        match chess_piece.id {
+                            ChessPieceId::Bishop => {
+                                self.load_chess_model(app, ChessModel::black_bishop, x, y);
+                            }
+                            ChessPieceId::Rook => {
+                                self.load_chess_model(app, ChessModel::black_rook, x, y);
+                            }
+                            ChessPieceId::King => {
+                                self.load_chess_model(app, ChessModel::black_king, x, y);
+                            }
+                            ChessPieceId::Queen => {
+                                self.load_chess_model(app, ChessModel::black_queen, x, y);
+                            }
+                            ChessPieceId::Knight => {
+                                self.load_chess_model(app, ChessModel::black_knight, x, y);
+                            }
+                            ChessPieceId::Pawn => {
+                                self.load_chess_model(app, ChessModel::black_pawn, x, y);
+                            }
+                        }
+                    }
+                }
+                
+            }
         }
-
-        self.load_chess_model(app, ChessModel::white_rook, 0, 0);
-        self.load_chess_model(app, ChessModel::black_rook, 0, 7);
-
-        self.load_chess_model(app, ChessModel::white_knight, 1, 0);
-        self.load_chess_model(app, ChessModel::black_knight, 1, 7);
-
-        self.load_chess_model(app, ChessModel::white_bishop, 2, 0);
-        self.load_chess_model(app, ChessModel::black_bishop, 2, 7);
-
-        self.load_chess_model(app, ChessModel::white_queen, 3, 0);
-        self.load_chess_model(app, ChessModel::black_queen, 3, 7);
-
-        self.load_chess_model(app, ChessModel::white_king, 4, 0);
-        self.load_chess_model(app, ChessModel::black_king, 4, 7);
-
-        self.load_chess_model(app, ChessModel::white_bishop, 5, 0);
-        self.load_chess_model(app, ChessModel::black_bishop, 5, 7);
-
-        self.load_chess_model(app, ChessModel::white_knight, 6, 0);
-        self.load_chess_model(app, ChessModel::black_knight, 6, 7);
-
-        self.load_chess_model(app, ChessModel::white_rook, 7, 0);
-        self.load_chess_model(app, ChessModel::black_rook, 7, 7);
     }
     pub fn load_chess_model(&mut self, app: &mut main_vulkan::App, id: ChessModel, x: usize, y: usize){
         app.data.model_instances.push(ModelInstance{ 
@@ -243,8 +274,21 @@ impl main_vulkan::GameLoop for MyGameLoop {
                             let pos = self.get_selected_square(app);
                             if pos.is_some() {
                                 let (x, y) = pos.unwrap();
-                                self.selected_x = x;
-                                self.selected_y = y;
+                                if self.selected_x <= 7 && self.selected_y <= 7 {
+                                    self.chess_engine.move_piece(
+                                        BoardMove::new(self.selected_x as u8, 
+                                                self.selected_y as u8, 
+                                                x as u8, 
+                                                y as u8), 
+                                            true, None);
+                                    self.selected_x = 8;
+                                    self.selected_y = 8;
+                                }
+                                else {
+                                    self.selected_x = x;
+                                    self.selected_y = y;
+                                }
+                                
                             }
                             else {
                                 self.selected_x = 8;
