@@ -5,6 +5,27 @@ use nalgebra_glm as glm;
 pub mod main_vulkan;
 use main_vulkan::*;
 
+/*
+line_p: a point on the line
+line_v: the vector of the line
+pln_eq: equation of the plane[a, b, c, d]: ax + by + cy + d = 0
+*/
+pub fn line_intersect_plane(line_p: glm::TVec3<f32>, line_v: glm::TVec3<f32>, pln_eq: [f32; 4]) -> Option<glm::TVec3<f32>> {
+    let dot_v_plane = line_v[0] * pln_eq[0] + line_v[1] * pln_eq[1] + line_v[2] * pln_eq[2];
+    if dot_v_plane == 0.0 {
+        // Line does not intersect plane
+        // (The normal of the plane is at 90dgr from the line, the plane and the line are parallell)
+        return None;
+    }
+    let t = -(line_p[0] * pln_eq[0] + line_p[1] * pln_eq[1] + line_p[2] * pln_eq[2] + pln_eq[3]) / dot_v_plane;
+
+    let x = line_p[0] + t * line_v[0];
+    let y = line_p[1] + t * line_v[1];
+    let z = line_p[2] + t * line_v[2];
+
+    return Some(glm::vec3(x as f32, y as f32, z as f32));
+}
+
 #[derive(Debug, Default)]
 struct MyGameLoop {
     look_vec: glm::TVec3<f32>,
@@ -16,7 +37,9 @@ struct MyGameLoop {
     a_pressed: bool,
     d_pressed: bool,
     space_pressed: bool,
-    shift_pressed: bool
+    shift_pressed: bool,
+    selected_x: usize,
+    selected_y: usize
 }
 
 impl MyGameLoop {
@@ -69,6 +92,33 @@ impl MyGameLoop {
             rotate_vec: glm::vec3(0.0, 0.0, 1.0),
         });
     }
+    pub fn load_selected(&mut self, app: &mut main_vulkan::App, x: usize, y: usize){
+        app.data.model_instances.push(ModelInstance{ 
+            model_index: ChessModel::selected as usize,  
+            position: glm::vec3(x as f32 * 2.0, y as f32 * 2.0, 0.001),
+            rotate_rad: glm::radians(&glm::vec1(90.0))[0],
+            rotate_vec: glm::vec3(0.0, 0.0, 1.0),
+        });
+    }
+    pub fn get_selected_square(&mut self, app: &mut main_vulkan::App) -> Option<(usize, usize)> {
+        let pos = 
+        line_intersect_plane(app.data.camera.position, 
+            self.look_vec, 
+            [0.0, 0.0, 1.0, 0.0]);
+
+        // Draw selected square
+        if pos.is_some() {
+            let pos = pos.unwrap();
+            //println!("{}",  pos);
+            let board_x = (pos[0]/2.0) as i32;
+            let board_y = (pos[1]/2.0) as i32;
+            if board_x >= 0 && board_x <= 7 && board_y >= 0 && board_y <= 7 {
+                //self.load_selected(app, board_x as usize, board_y as usize);
+                return Some((board_x as usize, board_y as usize));
+            }
+        }
+        return None;
+    }
 }
 
 impl main_vulkan::GameLoop for MyGameLoop {
@@ -79,6 +129,8 @@ impl main_vulkan::GameLoop for MyGameLoop {
         self.grab = true;
         app.data.camera.position[0] = 6.0;
         app.data.camera.position[2] = 2.0;
+        self.selected_x = 8;
+        self.selected_y = 8;
 
         // Load some models on screen
         for model_index in 0..4 {
@@ -111,6 +163,20 @@ impl main_vulkan::GameLoop for MyGameLoop {
         }
         self.load_chess_board(app);
         app.data.camera.looking_at = app.data.camera.position - self.look_vec;
+        let pos = 
+        line_intersect_plane(app.data.camera.position, 
+            self.look_vec, 
+            [0.0, 0.0, 1.0, 0.0]);
+
+        // Draw selected square
+        let pos = self.get_selected_square(app);
+        if pos.is_some() {
+            let (x, y) = pos.unwrap();
+            self.load_selected(app, x as usize, y as usize);
+        }
+        if self.selected_x <= 7 && self.selected_y <= 7 {
+            self.load_selected(app, self.selected_x as usize, self.selected_y as usize);
+        }
     }
     fn handle_event(&mut self, app: &mut main_vulkan::App, event: &Event<()>, window: &winit::window::Window) {
         match event {
@@ -169,6 +235,26 @@ impl main_vulkan::GameLoop for MyGameLoop {
                     let _ = window.set_cursor_position(winit::dpi::LogicalPosition::new(512, 384));
                 }
             }
+
+            Event::WindowEvent { event: WindowEvent::MouseInput { button, state, .. }, .. } => {
+                if *state == ElementState::Pressed {
+                    match *button {
+                        winit::event::MouseButton::Left => {
+                            let pos = self.get_selected_square(app);
+                            if pos.is_some() {
+                                let (x, y) = pos.unwrap();
+                                self.selected_x = x;
+                                self.selected_y = y;
+                            }
+                            else {
+                                self.selected_x = 8;
+                                self.selected_y = 8;
+                            }
+                        },
+                        _ => { }
+                    }
+                }
+            }
             _ => {
 
             }
@@ -190,6 +276,7 @@ enum ChessModel {
     black_rook,
     black_king,
     black_bishop,
+    selected,
 }
 
 fn main() -> Result<()> {
@@ -208,6 +295,7 @@ fn main() -> Result<()> {
         "./resources/chess/black_rook.obj".to_string(),
         "./resources/chess/black_king.obj".to_string(),
         "./resources/chess/black_bishop.obj".to_string(),
+        "./resources/chess/selected.obj".to_string(),
     )
     )?;
     return Ok(());
