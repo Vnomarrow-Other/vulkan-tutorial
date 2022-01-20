@@ -124,7 +124,7 @@ impl MyGameLoop {
         app.data.model_instances.push(ModelInstance{ 
             model_index: id as usize,  
             position: glm::vec3(x as f32 * 2.0, y as f32 * 2.0, 0.0),
-            rotate_rad: glm::radians(&glm::vec1(90.0))[0],
+            rotate_rad: glm::radians(&glm::vec1(0.0))[0],
             rotate_vec: glm::vec3(0.0, 0.0, 1.0),
         });
     }
@@ -167,7 +167,7 @@ impl MyGameLoop {
 
 impl GameLoop for MyGameLoop {
     fn create(&mut self, app: &mut App) {
-        self.look_vec = glm::vec3(6.0, 0.0, 2.0);
+        self.look_vec = glm::vec3(0.0, 0.0, 1.0);
         self.angle_x = 0.0;
         self.angle_y = 0.0;
         self.grab = true;
@@ -271,6 +271,8 @@ impl GameLoop for MyGameLoop {
                     let vec3: glm::TVec3<f32> = glm::rotate_vec3(&vec1, self.angle_x as f32 + std::f64::consts::PI as f32 / 2.0, &glm::vec3(0.0, 0.0, 1.0));
                     let vec1: glm::TVec3<f32> = glm::rotate_vec3(&vec2, self.angle_y as f32, &vec3.clone());
                     self.look_vec = vec1;
+                    //println!("{}, {}", self.angle_x, self.angle_y);
+                    //println!("{}, {}", self.selected_x, self.selected_y);
 
                     //self.look_vec.x = (angle_x - std::f64::consts::PI) as f32;
                     //self.look_vec.y = (angle_y - std::f64::consts::PI) as f32;
@@ -307,6 +309,7 @@ impl GameLoop for MyGameLoop {
                                 self.selected_x = 8;
                                 self.selected_y = 8;
                             }
+                            println!("{} {}", self.selected_x, self.selected_y);
                         },
                         _ => { }
                     }

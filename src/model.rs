@@ -222,8 +222,8 @@ impl MyModel {
 
                 let vertex = Vertex {
                     pos: glm::vec3(
-                        model.mesh.positions[pos_offset] / RENDER_DISTANCE,
                         model.mesh.positions[pos_offset + 2] / RENDER_DISTANCE,
+                        model.mesh.positions[pos_offset] / RENDER_DISTANCE,
                         model.mesh.positions[pos_offset + 1] / RENDER_DISTANCE,
                     ),
                     color,
