@@ -10,7 +10,7 @@ use crate::buffer::*;
 use crate::debug::*;
 
 #[rustfmt::skip]
-pub fn main(game_loop: &mut dyn GameLoop, model_paths: Vec<String>) -> Result<()> {
+pub fn main(game_loop: &mut dyn GameLoop, model_loaders: Vec<ModelLoader>) -> Result<()> {
     pretty_env_logger::init();
 
     // Init the Window
@@ -24,7 +24,7 @@ pub fn main(game_loop: &mut dyn GameLoop, model_paths: Vec<String>) -> Result<()
     //window.set_cursor_grab(true)?;
     // Init the App
 
-    let mut app = unsafe { App::create(&window, model_paths)? };
+    let mut app = unsafe { App::create(&window, model_loaders)? };
     game_loop.create(&mut app);
     let mut destroying = false;
     let mut minimized = false;
@@ -85,7 +85,7 @@ pub struct App {
 
 impl App {
     /// Creates our Vulkan app.
-    unsafe fn create(window: &Window, model_paths: Vec<String>) -> Result<Self> {
+    unsafe fn create(window: &Window, model_loaders: Vec<ModelLoader>) -> Result<Self> {
         let loader = LibloadingLoader::new(LIBRARY)?;
         let entry = Entry::new(loader).map_err(|b| anyhow!("{}", b))?;
         let mut data = AppData::default();
@@ -105,8 +105,8 @@ impl App {
         create_texture_image(&instance, &device, &mut data)?;
         create_texture_image_view(&device, &mut data)?;
         create_texture_sampler(&device, &mut data)?;
-        for i in 0..model_paths.len() {
-            load_model(&instance, &device, &mut data, model_paths[i].as_str())?;
+        for i in 0..model_loaders.len() {
+            model_loaders[i].load(&instance, &device, &mut data)?;
         }
         create_uniform_buffers(&instance, &device, &mut data)?;
         create_descriptor_pool(&device, &mut data)?;

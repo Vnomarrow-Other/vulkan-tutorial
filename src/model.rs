@@ -22,6 +22,43 @@ pub struct MyModel {
     pub index_buffer_memory: vk::DeviceMemory,
 }
 
+pub enum ModelLoader {
+    ModelLoaderObjFile(ModelLoaderObjFile)
+}
+
+impl ModelLoader {
+    pub fn load(&self, instance: &Instance, device: &Device, data: &mut AppData) -> Result<()> {
+        match self {
+            ModelLoader::ModelLoaderObjFile(loader) => {
+                return loader.load(instance, device, data);
+            }
+        }
+    }
+}
+
+pub struct ModelLoaderObjFile {
+    pub obj_file_path: String,
+    pub mtl_file_path: String
+}
+
+impl ModelLoaderObjFile {
+    pub fn new(obj_file_path: String, mtl_file_path: String) -> Self {
+        Self {
+            obj_file_path,
+            mtl_file_path
+        }
+    }
+    pub fn load(&self, instance: &Instance, device: &Device, data: &mut AppData) -> Result<()> {
+
+        let mut model = MyModel::new();
+        model.load_model(self.obj_file_path.as_str(), self.mtl_file_path.as_str())?;
+        unsafe { model.create_buffers(data, instance, device)?; };
+        data.models.push(model);
+
+        Ok(())
+    }
+}
+
 impl MyModel {
     pub fn new() -> Self {
         Self {
@@ -139,12 +176,12 @@ impl MyModel {
         Ok(())
     }
     // Load a model from a file
-    pub fn load_model(&mut self, path: &str) -> Result<()> {
+    pub fn load_model(&mut self, obj_path: &str, mtl_path: &str) -> Result<()> {
         // Load the verticies and indices, make sure there are no dubble verticies
         let mut unique_vertices = HashMap::new();
 
          // Read the MTL file
-         let mut reader = BufReader::new(File::open("./resources/chess/chess_set.mtl")?);
+         let mut reader = BufReader::new(File::open(mtl_path)?);
 
          //let (models, materials) = tobj::load_obj(path, true)?;
  
@@ -153,7 +190,7 @@ impl MyModel {
          let materials = (&materials2).0.clone();
 
         // Read the OBJ file
-        let mut reader = BufReader::new(File::open(path)?);
+        let mut reader = BufReader::new(File::open(obj_path)?);
 
         //let (models, materials) = tobj::load_obj(path, true)?;
 
@@ -285,7 +322,7 @@ impl Hash for Vertex {
     }
 }
 
-pub fn load_model(instance: &Instance, device: &Device, data: &mut AppData, path: &str) -> Result<()> {
+/*pub fn load_model(instance: &Instance, device: &Device, data: &mut AppData, obj_path: &str) -> Result<()> {
     // Model
 
     let mut model = MyModel::new();
@@ -294,4 +331,4 @@ pub fn load_model(instance: &Instance, device: &Device, data: &mut AppData, path
     data.models.push(model);
 
     Ok(())
-}
+}*/

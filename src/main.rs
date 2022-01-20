@@ -338,21 +338,23 @@ enum ChessModel {
 
 fn main() -> Result<()> {
     let mut a = MyGameLoop::default();
+    let mtl_file = "./resources/chess/chess_set.mtl".to_string();
+
     app::main(&mut a, vec!(
-        "./resources/chess/board.obj".to_string(),
-        "./resources/chess/white_pawn.obj".to_string(),
-        "./resources/chess/white_queen.obj".to_string(),
-        "./resources/chess/white_knight.obj".to_string(),
-        "./resources/chess/white_rook.obj".to_string(),
-        "./resources/chess/white_king.obj".to_string(),
-        "./resources/chess/white_bishop.obj".to_string(),
-        "./resources/chess/black_pawn.obj".to_string(),
-        "./resources/chess/black_queen.obj".to_string(),
-        "./resources/chess/black_knight.obj".to_string(),
-        "./resources/chess/black_rook.obj".to_string(),
-        "./resources/chess/black_king.obj".to_string(),
-        "./resources/chess/black_bishop.obj".to_string(),
-        "./resources/chess/selected.obj".to_string(),
+        ModelLoader::ModelLoaderObjFile(ModelLoaderObjFile::new("./resources/chess/board.obj".to_string(), mtl_file.clone())),
+        ModelLoader::ModelLoaderObjFile(ModelLoaderObjFile::new("./resources/chess/white_pawn.obj".to_string(), mtl_file.clone())),
+        ModelLoader::ModelLoaderObjFile(ModelLoaderObjFile::new("./resources/chess/white_queen.obj".to_string(), mtl_file.clone())),
+        ModelLoader::ModelLoaderObjFile(ModelLoaderObjFile::new("./resources/chess/white_knight.obj".to_string(), mtl_file.clone())),
+        ModelLoader::ModelLoaderObjFile(ModelLoaderObjFile::new("./resources/chess/white_rook.obj".to_string(), mtl_file.clone())),
+        ModelLoader::ModelLoaderObjFile(ModelLoaderObjFile::new("./resources/chess/white_king.obj".to_string(), mtl_file.clone())),
+        ModelLoader::ModelLoaderObjFile(ModelLoaderObjFile::new("./resources/chess/white_bishop.obj".to_string(), mtl_file.clone())),
+        ModelLoader::ModelLoaderObjFile(ModelLoaderObjFile::new("./resources/chess/black_pawn.obj".to_string(), mtl_file.clone())),
+        ModelLoader::ModelLoaderObjFile(ModelLoaderObjFile::new("./resources/chess/black_queen.obj".to_string(), mtl_file.clone())),
+        ModelLoader::ModelLoaderObjFile(ModelLoaderObjFile::new("./resources/chess/black_knight.obj".to_string(), mtl_file.clone())),
+        ModelLoader::ModelLoaderObjFile(ModelLoaderObjFile::new("./resources/chess/black_rook.obj".to_string(), mtl_file.clone())),
+        ModelLoader::ModelLoaderObjFile(ModelLoaderObjFile::new("./resources/chess/black_king.obj".to_string(), mtl_file.clone())),
+        ModelLoader::ModelLoaderObjFile(ModelLoaderObjFile::new("./resources/chess/black_bishop.obj".to_string(), mtl_file.clone())),
+        ModelLoader::ModelLoaderObjFile(ModelLoaderObjFile::new("./resources/chess/selected.obj".to_string(), mtl_file.clone()))
     )
     )?;
     return Ok(());
