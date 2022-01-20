@@ -3,7 +3,20 @@ use winit::event::{ElementState, Event, VirtualKeyCode, WindowEvent};
 use nalgebra_glm as glm;
 
 pub mod main_vulkan;
+pub mod util;
+pub mod time;
+pub mod app;
+pub mod include;
+pub mod model;
+pub mod texture;
+pub mod debug;
+pub mod device;
+pub mod swapchain;
+pub mod pipeline;
+pub mod buffer;
 use main_vulkan::*;
+use crate::app::*;
+use crate::model::*;
 
 use chess_engine::chess_game::*;
 
@@ -46,7 +59,7 @@ struct MyGameLoop {
 }
 
 impl MyGameLoop {
-    pub fn load_chess_board(&mut self, app: &mut main_vulkan::App) {
+    pub fn load_chess_board(&mut self, app: &mut App) {
         app.data.model_instances = Default::default();
         self.load_board(app);
 
@@ -107,7 +120,7 @@ impl MyGameLoop {
             }
         }
     }
-    pub fn load_chess_model(&mut self, app: &mut main_vulkan::App, id: ChessModel, x: usize, y: usize){
+    pub fn load_chess_model(&mut self, app: &mut App, id: ChessModel, x: usize, y: usize){
         app.data.model_instances.push(ModelInstance{ 
             model_index: id as usize,  
             position: glm::vec3(x as f32 * 2.0, y as f32 * 2.0, 0.0),
@@ -115,7 +128,7 @@ impl MyGameLoop {
             rotate_vec: glm::vec3(0.0, 0.0, 1.0),
         });
     }
-    pub fn load_board(&mut self, app: &mut main_vulkan::App) {
+    pub fn load_board(&mut self, app: &mut App) {
         app.data.model_instances.push(ModelInstance{ 
             model_index: ChessModel::board as usize,  
             position: glm::vec3(7.0, 7.0, 0.0),
@@ -123,7 +136,7 @@ impl MyGameLoop {
             rotate_vec: glm::vec3(0.0, 0.0, 1.0),
         });
     }
-    pub fn load_selected(&mut self, app: &mut main_vulkan::App, x: usize, y: usize){
+    pub fn load_selected(&mut self, app: &mut App, x: usize, y: usize){
         app.data.model_instances.push(ModelInstance{ 
             model_index: ChessModel::selected as usize,  
             position: glm::vec3(x as f32 * 2.0, y as f32 * 2.0, 0.001),
@@ -131,7 +144,7 @@ impl MyGameLoop {
             rotate_vec: glm::vec3(0.0, 0.0, 1.0),
         });
     }
-    pub fn get_selected_square(&mut self, app: &mut main_vulkan::App) -> Option<(usize, usize)> {
+    pub fn get_selected_square(&mut self, app: &mut App) -> Option<(usize, usize)> {
         let pos = 
         line_intersect_plane(app.data.camera.position, 
             self.look_vec, 
@@ -152,8 +165,8 @@ impl MyGameLoop {
     }
 }
 
-impl main_vulkan::GameLoop for MyGameLoop {
-    fn create(&mut self, app: &mut main_vulkan::App) {
+impl GameLoop for MyGameLoop {
+    fn create(&mut self, app: &mut App) {
         self.look_vec = glm::vec3(6.0, 0.0, 2.0);
         self.angle_x = 0.0;
         self.angle_y = 0.0;
@@ -169,7 +182,7 @@ impl main_vulkan::GameLoop for MyGameLoop {
             let z = (((model_index / 2) as f32) * -2.0) + 1.0;
         }
     }
-    fn update(&mut self, app: &mut main_vulkan::App) {
+    fn update(&mut self, app: &mut App) {
         let speed: f32 = 0.05;
         let vec1: glm::TVec3<f32> = glm::vec3(0.0, 1.0, 0.0);
         let forward: glm::TVec3<f32> = glm::rotate_vec3(&vec1, self.angle_x as f32 + std::f32::consts::PI, &glm::vec3(0.0, 0.0, 1.0));
@@ -209,7 +222,7 @@ impl main_vulkan::GameLoop for MyGameLoop {
             self.load_selected(app, self.selected_x as usize, self.selected_y as usize);
         }
     }
-    fn handle_event(&mut self, app: &mut main_vulkan::App, event: &Event<()>, window: &winit::window::Window) {
+    fn handle_event(&mut self, app: &mut App, event: &Event<()>, window: &winit::window::Window) {
         match event {
             // Handle keyboard events.
             Event::WindowEvent { event: WindowEvent::KeyboardInput { input, .. }, .. } => {
@@ -325,7 +338,7 @@ enum ChessModel {
 
 fn main() -> Result<()> {
     let mut a = MyGameLoop::default();
-    main_vulkan::main(&mut a, vec!(
+    app::main(&mut a, vec!(
         "./resources/chess/board.obj".to_string(),
         "./resources/chess/white_pawn.obj".to_string(),
         "./resources/chess/white_queen.obj".to_string(),
